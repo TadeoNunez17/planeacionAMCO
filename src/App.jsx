@@ -21,13 +21,14 @@ export default function App() {
     docente,
     loading,
     savingPrefs,
-    temasDisponibles,
+    temasDisponibles, // Obtenido del hook
     libros,
     ciclosDisponibles,
     generarRangoTexto,
     actualizarFechasSesiones,
     addMateria,
     moverMateria,
+    removeMateria,    // Agregado para que funcione el borrado
     autoRellenar,
     updateMateria,
     updateSessionLogistics,
@@ -79,10 +80,11 @@ export default function App() {
             setActiveSession={setActiveSession}
             addMateria={addMateria}
             moverMateria={moverMateria}
+            removeMateria={removeMateria} // Se pasa la función de borrado
             autoRellenar={autoRellenar}
             updateMateria={updateMateria}
             updateSessionLogistics={updateSessionLogistics}
-            catalog={temasDisponibles}
+            temasDisponibles={temasDisponibles} // Cambiado de 'catalog' a 'temasDisponibles'
             onBack={() => setStep(1)}
             onNext={() => setStep(3)}
           />

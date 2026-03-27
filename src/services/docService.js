@@ -2,9 +2,16 @@ import PizZip from 'pizzip';
 import Docxtemplater from 'docxtemplater';
 import { saveAs } from 'file-saver';
 
+const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+
 export async function downloadDoc({ sessions, plan, docente }) {
   try {
-    const response = await fetch('/plantilla_maestra.docx');
+    const response = await fetch(`${window.location.origin}/plantilla_maestra.docx`);
+    
+    if (!response.ok) {
+      throw new Error(`No se encontró la plantilla (${response.status})`);
+    }
+
     const arrayBuffer = await response.arrayBuffer();
     const zip = new PizZip(arrayBuffer);
     const doc = new Docxtemplater(zip, { 
@@ -13,7 +20,6 @@ export async function downloadDoc({ sessions, plan, docente }) {
       linebreaks: true
     });
 
-    // Preparar datos dinámicos
     const data = {
       nombre_docente: docente?.nombre_completo || "DOCENTE NO IDENTIFICADO",
       ciclo_escolar: plan.ciclo_escolar, 
@@ -33,15 +39,21 @@ export async function downloadDoc({ sessions, plan, docente }) {
       }))
     };
 
-    // Renderizar directamente con datos (nueva API sin setData deprecado)
     doc.render(data);
     
-    // Generar el archivo
-    const out = doc.getZip().generate({ type: 'blob' });
+    // ✅ Fix tamaño: DEFLATE + MIME type correcto (fix Android)
+    const out = doc.getZip().generate({ 
+      type: 'blob',
+      compression: "DEFLATE",
+      compressionOptions: { level: 6 },
+      mimeType: DOCX_MIME  // 👈 Android ya no lo detecta como ZIP
+    });
     
-    // Nombre del archivo personalizado
+    // ✅ Doble seguro: forzar MIME también en el Blob final
+    const blob = new Blob([out], { type: DOCX_MIME });
+    
     const nombreArchivo = `Planeacion_${docente?.nombre_completo || 'Docente'}_${plan.rango_fechas || 'Semana'}.docx`;
-    saveAs(out, nombreArchivo);
+    saveAs(blob, nombreArchivo);
 
   } catch (e) { 
     console.error(e);

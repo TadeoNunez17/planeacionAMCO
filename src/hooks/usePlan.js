@@ -36,45 +36,104 @@ export function usePlan(session) {
   };
 
   const actualizarFechasSesiones = (fechaInicioStr, fechaFinStr) => {
-    if (!fechaInicioStr || !fechaFinStr) return;
-    const startDate = new Date(fechaInicioStr + "T00:00:00");
-    const endDate = new Date(fechaFinStr + "T00:00:00");
-    if (endDate < startDate) return; 
+  if (!fechaInicioStr || !fechaFinStr) return;
+  
+  const startDate = new Date(fechaInicioStr + "T00:00:00");
+  const endDate = new Date(fechaFinStr + "T00:00:00");
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
 
-    const diffTime = endDate.getTime() - startDate.getTime();
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    const numDays = Math.min(diffDays, 7);
-    const diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+  // Validación 1: No permitir fechas menores a hoy
+  if (startDate < hoy) {
+    alert("No puedes seleccionar una fecha anterior a hoy.");
+    return;
+  }
 
+  // Validación 2: Solo permitir Lunes a Viernes (1 a 5)
+  // 0 = Domingo, 6 = Sábado
+  const diaInicio = startDate.getDay();
+  if (diaInicio === 0 || diaInicio === 6) {
+    alert("La planeación solo puede iniciar en días hábiles (Lunes a Viernes).");
+    return;
+  }
+
+  if (endDate < startDate) return; 
+
+  const diffTime = endDate.getTime() - startDate.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  const numDays = Math.min(diffDays, 7);
+  const diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+
+  setSessions((prevSessions) => {
+    const newSessions = [];
+    for (let i = 0; i < numDays; i++) {
+      const currentDate = new Date(startDate);
+      currentDate.setDate(startDate.getDate() + i);
+      
+      // Saltarse fines de semana en la generación automática de sesiones
+      const dayOfWeek = currentDate.getDay();
+      if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+
+      const formattedDate = `${currentDate.getDate()} de ${MESES[currentDate.getMonth()]}`;
+      const diaSemanaStr = diasSemana[currentDate.getDay()]; 
+      const existingSession = prevSessions.find(s => s.fecha_exacta === formattedDate) || { materias: [], tema_relevancia: "" };
+      
+      newSessions.push({
+        id: i, 
+        dia: diaSemanaStr, 
+        fecha_exacta: formattedDate,
+        tema_relevancia: existingSession.tema_relevancia, 
+        materias: existingSession.materias
+      });
+    }
+    return newSessions;
+  });
+};
+
+    const addMateria = (sIdx) => {
+    // Usamos una función de actualización para asegurar que trabajamos con el estado más reciente
     setSessions((prevSessions) => {
-      const newSessions = [];
-      for (let i = 0; i < numDays; i++) {
-        const currentDate = new Date(startDate);
-        currentDate.setDate(startDate.getDate() + i);
-        const formattedDate = `${currentDate.getDate()} de ${MESES[currentDate.getMonth()]}`;
-        const diaSemanaStr = diasSemana[currentDate.getDay()]; 
-        const existingSession = prevSessions[i] || { materias: [], tema_relevancia: "" };
-        newSessions.push({
-          id: i, dia: diaSemanaStr, fecha_exacta: formattedDate,
-          tema_relevancia: existingSession.tema_relevancia, materias: existingSession.materias
-        });
+      // 1. Clonamos el array de sesiones
+      const nuevas = [...prevSessions];
+      
+      // 2. Definimos la nueva materia (todos los campos vacíos como pediste)
+      const nuevaMateria = {
+        hora: "", 
+        campo: "", // Al estar vacío, el componente usará un color gris por defecto
+        tema: "", 
+        pagina: "", 
+        recursos_materia: "", 
+        eje_ambito: "", 
+        aprendizaje: "", 
+        im: "", 
+        concepto_evaluar: "", 
+        inicio: "", 
+        desarrollo: "", 
+        cierre: ""
+      };
+
+      // 3. Verificamos que el día (sIdx) exista antes de empujar la materia
+      if (nuevas[sIdx]) {
+        // Clonamos el array de materias del día específico para mantener inmutabilidad
+        nuevas[sIdx] = {
+          ...nuevas[sIdx],
+          materias: [...nuevas[sIdx].materias, nuevaMateria]
+        };
       }
-      return newSessions;
+
+      return nuevas;
     });
   };
-
-  const addMateria = (sIdx) => {
-    const newSessions = [...sessions];
-    const nuevaMateria = {
-      hora: TIME_SLOTS[0], campo: "Lenguajes", tema: "", 
-      pagina: "", recursos_materia: "", eje_ambito: "", 
-      aprendizaje: "", im: "", concepto_evaluar: "", 
-      inicio: "", desarrollo: "", cierre: ""
-    };
-    newSessions[sIdx].materias.push(nuevaMateria);
-    setSessions(newSessions);
+  const removeMateria = (sIdx, mIdx) => {
+    setSessions((prevSessions) => {
+      // Creamos una copia profunda de las sesiones
+      const nuevas = [...prevSessions];
+      // Filtramos las materias del día específico (sIdx) 
+      // manteniendo solo las que NO coincidan con el índice seleccionado (mIdx)
+      nuevas[sIdx].materias = nuevas[sIdx].materias.filter((_, index) => index !== mIdx);
+      return nuevas;
+    });
   };
-
   const moverMateria = (sIdx, mIdx, direccion) => {
     const nuevas = [...sessions];
     const materias = [...nuevas[sIdx].materias];
@@ -379,6 +438,7 @@ export function usePlan(session) {
     actualizarFechasSesiones,
     addMateria,
     moverMateria,
+    removeMateria,
     autoRellenar,
     updateMateria,
     updateSessionLogistics,
