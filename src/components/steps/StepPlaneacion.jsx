@@ -144,7 +144,8 @@ export default function StepPlaneacion({
                 {/* Campos de Contenido */}
                 {m.campo && (
                   <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-300">
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* Fila 1: Aprendizaje y Eje */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <span className="text-[9px] font-bold uppercase text-slate-400 ml-1">Aprendizaje Esperado</span>
                         <AutoResizingTextarea 
@@ -165,6 +166,53 @@ export default function StepPlaneacion({
                       </div>
                     </div>
 
+                    {/* Fila 2: NUEVOS CAMPOS (Página, IM, Concepto) */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-1">
+                        <span className="text-[9px] font-bold uppercase text-slate-400 ml-1">Página(s)</span>
+                        <input 
+                          type="text"
+                          placeholder="Ej. 1, 2, 3..."
+                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] outline-none focus:ring-2 focus:ring-indigo-500/10" 
+                          value={m.pagina} 
+                          onChange={e => updateMateria(activeSession, mIdx, 'pagina', e.target.value)} 
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[9px] font-bold uppercase text-slate-400 ml-1">I.M. (Inteligencias)</span>
+                        <input 
+                          type="text"
+                          placeholder="Ej. VL, VE, K..."
+                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] outline-none focus:ring-2 focus:ring-indigo-500/10" 
+                          value={m.im} 
+                          onChange={e => updateMateria(activeSession, mIdx, 'im', e.target.value)} 
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-[9px] font-bold uppercase text-slate-400 ml-1">Concepto a Evaluar (HBP)</span>
+                        <input 
+                          type="text"
+                          placeholder="Ej. Observar, Relacionar..."
+                          className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] outline-none focus:ring-2 focus:ring-indigo-500/10" 
+                          value={m.concepto_evaluar} 
+                          onChange={e => updateMateria(activeSession, mIdx, 'concepto_evaluar', e.target.value)} 
+                        />
+                      </div>
+                    </div>
+
+                    {/* Fila 3: Recursos */}
+                    <div className="space-y-1">
+                      <span className="text-[9px] font-bold uppercase text-slate-400 ml-1">Recursos de la Materia</span>
+                      <input 
+                        type="text"
+                        placeholder="Materiales específicos..."
+                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-[11px] outline-none focus:ring-2 focus:ring-indigo-500/10" 
+                        value={m.recursos_materia} 
+                        onChange={e => updateMateria(activeSession, mIdx, 'recursos_materia', e.target.value)} 
+                      />
+                    </div>
+
+                    {/* Fases de la Sesión */}
                     <div className="grid grid-cols-1 gap-4">
                       {['inicio', 'desarrollo', 'cierre'].map((fase) => (
                         <div key={fase} className="space-y-1">

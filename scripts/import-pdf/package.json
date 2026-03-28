@@ -1,0 +1,14 @@
+{
+  "name": "amco-pdf-importer",
+  "version": "1.0.0",
+  "description": "Script para importar PDFs de planificación Amco a Supabase",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "pdfjs-dist": "^4.10.38"
+  }
+}

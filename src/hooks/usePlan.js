@@ -99,7 +99,7 @@ export function usePlan(session) {
       // 2. Definimos la nueva materia (todos los campos vacíos como pediste)
       const nuevaMateria = {
         hora: "", 
-        campo: "", // Al estar vacío, el componente usará un color gris por defecto
+        campo: "",
         tema: "", 
         pagina: "", 
         recursos_materia: "", 
@@ -147,16 +147,25 @@ export function usePlan(session) {
   const autoRellenar = (sIdx, mIdx, temaNombre) => {
     const newSessions = [...sessions];
     const materiaActual = newSessions[sIdx].materias[mIdx];
-    const datosBD = catalog.find(t => t.tema === temaNombre && t.campo_formativo === materiaActual.campo);
+    const datosBD = temasDisponibles.find(t => t.tema === temaNombre && t.campo_formativo === materiaActual.campo);
+    
     if (datosBD) {
       newSessions[sIdx].materias[mIdx] = {
-        ...materiaActual, tema: datosBD.tema, pagina: datosBD.pagina || "",
-        recursos_materia: datosBD.recursos_materia || "", eje_ambito: datosBD.eje_ambito || "",
-        aprendizaje: datosBD.aprendizaje || "", im: datosBD.im || "",
-        concepto_evaluar: datosBD.concepto_evaluar || "", inicio: datosBD.inicio || "",
-        desarrollo: datosBD.desarrollo || "", cierre: datosBD.cierre || ""
+        ...materiaActual, 
+        tema: datosBD.tema, 
+        pagina: datosBD.pagina || "",
+        recursos_materia: datosBD.recursos_materia || "", 
+        eje_ambito: datosBD.eje_ambito || "",
+        aprendizaje: datosBD.aprendizaje || "", 
+        im: datosBD.im || "",
+        concepto_evaluar: datosBD.concepto_evaluar || "", 
+        inicio: datosBD.inicio || "",
+        desarrollo: datosBD.desarrollo || "", 
+        cierre: datosBD.cierre || ""
       };
-    } else { newSessions[sIdx].materias[mIdx].tema = temaNombre; }
+    } else { 
+      newSessions[sIdx].materias[mIdx].tema = temaNombre; 
+    }
     setSessions(newSessions);
   };
 

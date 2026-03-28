@@ -22,6 +22,9 @@ export default function StepLogistica({ plan, setPlan, generarRangoTexto, actual
     }
   };
 
+  // Validación: Se requiere fecha inicio, fecha fin y libro seleccionado
+  const isInvalid = !plan.fecha_inicio || !plan.fecha_fin || !plan.libro_id;
+
   return (
     <div className="bg-white rounded-[2.5rem] p-8 shadow-2xl border border-slate-100 max-w-3xl mx-auto">
       <style>{`
@@ -59,21 +62,29 @@ export default function StepLogistica({ plan, setPlan, generarRangoTexto, actual
           </div>
           {plan.rango_fechas && (
             <div className="mt-4 inline-flex items-center gap-2 bg-white px-4 py-2 rounded-full border border-indigo-100 text-xs font-bold text-indigo-600 shadow-sm animate-in fade-in zoom-in duration-300">
-              <Sparkles className="w-3 h-3" /> {plan.rango_fechas}
+              <span className="w-1.5 h-1.5 bg-indigo-500 rounded-full animate-pulse" /> {plan.rango_fechas}
             </div>
           )}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase ml-2 flex items-center gap-1"><BookOpen className="w-3 h-3" /> Seleccionar Libro</label>
-            <select className="w-full p-4 bg-slate-50 rounded-2xl border-2 border-transparent ring-1 ring-slate-200 font-bold outline-none text-sm focus:ring-2 focus:ring-indigo-500 transition-all" value={plan.libro_id || ''} onChange={(e) => seleccionarLibro(parseInt(e.target.value))}>
+            <label className="text-[10px] font-black text-slate-400 uppercase ml-2 flex items-center gap-1">
+              <BookOpen className="w-3 h-3" /> Seleccionar Libro
+            </label>
+            <select 
+              className={`w-full p-4 bg-slate-50 rounded-2xl border-2 border-transparent ring-1 font-bold outline-none text-sm transition-all ${!plan.libro_id ? 'ring-amber-200 bg-amber-50/30' : 'ring-slate-200 focus:ring-indigo-500'}`} 
+              value={plan.libro_id || ''} 
+              onChange={(e) => seleccionarLibro(parseInt(e.target.value))}
+            >
               <option value="">-- Elige un libro --</option>
               {libros.map((libro) => (<option key={libro.id_libro} value={libro.id_libro}>{libro.nombre_libro}</option>))}
             </select>
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase ml-2 flex items-center gap-1"><Layers className="w-3 h-3" /> Ciclo AMCO</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase ml-2 flex items-center gap-1">
+              <Layers className="w-3 h-3" /> Ciclo AMCO
+            </label>
             <select className="w-full p-4 bg-slate-50 rounded-2xl border-2 border-transparent ring-1 ring-slate-200 font-bold outline-none text-sm focus:ring-2 focus:ring-indigo-500 transition-all" value={plan.cicloAmco} onChange={e => setPlan({...plan, cicloAmco: e.target.value})}>
               {ciclosDisponibles.length > 0 ? ciclosDisponibles.map((ciclo) => (<option key={ciclo} value={ciclo}>{ciclo}</option>)) : (<option value="">-- Selecciona libro primero --</option>)}
             </select>
@@ -103,7 +114,11 @@ export default function StepLogistica({ plan, setPlan, generarRangoTexto, actual
         </div>
       </div>
 
-      <button onClick={onNext} disabled={!plan.fecha_inicio || !plan.fecha_fin} className={`w-full font-black py-6 rounded-[2rem] shadow-2xl mt-10 flex items-center justify-center gap-3 transition-all ${!plan.fecha_inicio || !plan.fecha_fin ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200 shadow-xl'}`}>
+      <button 
+        onClick={onNext} 
+        disabled={isInvalid} 
+        className={`w-full font-black py-6 rounded-[2rem] shadow-2xl mt-10 flex items-center justify-center gap-3 transition-all ${isInvalid ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none scale-100' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200 shadow-xl active:scale-95'}`}
+      >
         <Plus className="w-6 h-6"/> Empezar Planeación
       </button>
     </div>

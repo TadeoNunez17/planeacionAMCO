@@ -27,3 +27,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# PDF Importer
+scripts/import-pdf/pdfs/
+scripts/import-pdf/.env
+scripts/import-pdf/node_modules/
