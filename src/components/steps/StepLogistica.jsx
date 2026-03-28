@@ -5,22 +5,26 @@ export default function StepLogistica({ plan, setPlan, generarRangoTexto, actual
   const today = new Date().toISOString().split('T')[0];
 
   const handleDateChange = (e, field) => {
-    let selectedDate = e.target.value;
-    const dateObj = new Date(selectedDate + "T00:00:00");
-    const day = dateObj.getDay();
-    if (day === 0 || day === 6) {
-      const adj = day === 0 ? 1 : 2;
-      dateObj.setDate(dateObj.getDate() + adj);
-      selectedDate = dateObj.toISOString().split('T')[0];
-    }
-    if (field === 'inicio') {
-      setPlan({ ...plan, fecha_inicio: selectedDate, rango_fechas: generarRangoTexto(selectedDate, plan.fecha_fin) });
-      actualizarFechasSesiones(selectedDate, plan.fecha_fin);
-    } else {
-      setPlan({ ...plan, fecha_fin: selectedDate, rango_fechas: generarRangoTexto(plan.fecha_inicio, selectedDate) });
-      actualizarFechasSesiones(plan.fecha_inicio, selectedDate);
-    }
-  };
+  const selectedDate = e.target.value;
+  if (!selectedDate) return;
+
+  // Ya no validamos si es fin de semana, aceptamos lo que el usuario elija
+  if (field === 'inicio') {
+    setPlan(prev => ({ 
+      ...prev, 
+      fecha_inicio: selectedDate, 
+      rango_fechas: generarRangoTexto(selectedDate, prev.fecha_fin) 
+    }));
+    actualizarFechasSesiones(selectedDate, plan.fecha_fin);
+  } else {
+    setPlan(prev => ({ 
+      ...prev, 
+      fecha_fin: selectedDate, 
+      rango_fechas: generarRangoTexto(prev.fecha_inicio, selectedDate) 
+    }));
+    actualizarFechasSesiones(plan.fecha_inicio, selectedDate);
+  }
+};
 
   // Validación: Se requiere fecha inicio, fecha fin y libro seleccionado
   const isInvalid = !plan.fecha_inicio || !plan.fecha_fin || !plan.libro_id;
@@ -48,7 +52,7 @@ export default function StepLogistica({ plan, setPlan, generarRangoTexto, actual
             <div className="relative group flex flex-col">
               <span className="text-[10px] font-black text-indigo-400 uppercase ml-2 mb-2 block">Del día (Inicio):</span>
               <div className="relative flex items-center">
-                <input type="date" min={today} className="w-full p-4 bg-white rounded-2xl ring-1 ring-indigo-100 font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-500 z-20 relative bg-transparent" value={plan.fecha_inicio} onChange={(e) => handleDateChange(e, 'inicio')} />
+                <input type="date" className="w-full p-4 bg-white rounded-2xl ring-1 ring-indigo-100 font-bold text-sm outline-none focus:ring-2 focus:ring-indigo-500 z-20 relative bg-transparent" value={plan.fecha_inicio} onChange={(e) => handleDateChange(e, 'inicio')} />
                 <Calendar className="absolute right-4 w-5 h-5 text-indigo-500 z-0" />
               </div>
             </div>

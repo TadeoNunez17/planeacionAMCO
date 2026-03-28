@@ -37,59 +37,38 @@ export function usePlan(session) {
 
   const actualizarFechasSesiones = (fechaInicioStr, fechaFinStr) => {
   if (!fechaInicioStr || !fechaFinStr) return;
-  
   const startDate = new Date(fechaInicioStr + "T00:00:00");
   const endDate = new Date(fechaFinStr + "T00:00:00");
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
+  if (endDate < startDate) return;
 
-  // Validación 1: No permitir fechas menores a hoy
-  if (startDate < hoy) {
-    alert("No puedes seleccionar una fecha anterior a hoy.");
-    return;
-  }
-
-  // Validación 2: Solo permitir Lunes a Viernes (1 a 5)
-  // 0 = Domingo, 6 = Sábado
-  const diaInicio = startDate.getDay();
-  if (diaInicio === 0 || diaInicio === 6) {
-    alert("La planeación solo puede iniciar en días hábiles (Lunes a Viernes).");
-    return;
-  }
-
-  if (endDate < startDate) return; 
-
-  const diffTime = endDate.getTime() - startDate.getTime();
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
-  const numDays = Math.min(diffDays, 7);
   const diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
   setSessions((prevSessions) => {
     const newSessions = [];
-    for (let i = 0; i < numDays; i++) {
-      const currentDate = new Date(startDate);
-      currentDate.setDate(startDate.getDate() + i);
-      
-      // Saltarse fines de semana en la generación automática de sesiones
-      const dayOfWeek = currentDate.getDay();
-      if (dayOfWeek === 0 || dayOfWeek === 6) continue;
+    let currentLoopDate = new Date(startDate);
 
-      const formattedDate = `${currentDate.getDate()} de ${MESES[currentDate.getMonth()]}`;
-      const diaSemanaStr = diasSemana[currentDate.getDay()]; 
-      const existingSession = prevSessions.find(s => s.fecha_exacta === formattedDate) || { materias: [], tema_relevancia: "" };
+    // Iteramos por todos los días del rango sin excepciones
+    while (currentLoopDate <= endDate) {
+      const dayOfWeek = currentLoopDate.getDay();
+      const formattedDate = `${currentLoopDate.getDate()} de ${MESES[currentLoopDate.getMonth()]}`;
+      const diaSemanaStr = diasSemana[dayOfWeek];
+      
+      const existingSession = prevSessions.find(s => s.fecha_exacta === formattedDate) || 
+                             { materias: [], tema_relevancia: "" };
       
       newSessions.push({
-        id: i, 
-        dia: diaSemanaStr, 
+        id: newSessions.length,
+        dia: diaSemanaStr,
         fecha_exacta: formattedDate,
-        tema_relevancia: existingSession.tema_relevancia, 
+        tema_relevancia: existingSession.tema_relevancia,
         materias: existingSession.materias
       });
+
+      currentLoopDate.setDate(currentLoopDate.getDate() + 1);
     }
     return newSessions;
   });
 };
-
     const addMateria = (sIdx) => {
     // Usamos una función de actualización para asegurar que trabajamos con el estado más reciente
     setSessions((prevSessions) => {
