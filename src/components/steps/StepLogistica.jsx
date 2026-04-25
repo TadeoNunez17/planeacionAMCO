@@ -1,33 +1,32 @@
 import React from 'react';
-import { Database, Plus, Save, Loader2, Sparkles, Calendar, BookOpen, Layers, Link, Box } from 'lucide-react';
+import { Database, Plus, Save, Loader2, Calendar, BookOpen, Layers, Link, Box, AlertCircle } from 'lucide-react';
 
 export default function StepLogistica({ plan, setPlan, generarRangoTexto, actualizarFechasSesiones, guardarPreferencias, savingPrefs, libros, ciclosDisponibles, seleccionarLibro, onNext }) {
   const today = new Date().toISOString().split('T')[0];
 
   const handleDateChange = (e, field) => {
-  const selectedDate = e.target.value;
-  if (!selectedDate) return;
+    const selectedDate = e.target.value;
+    if (!selectedDate) return;
 
-  // Ya no validamos si es fin de semana, aceptamos lo que el usuario elija
-  if (field === 'inicio') {
-    setPlan(prev => ({ 
-      ...prev, 
-      fecha_inicio: selectedDate, 
-      rango_fechas: generarRangoTexto(selectedDate, prev.fecha_fin) 
-    }));
-    actualizarFechasSesiones(selectedDate, plan.fecha_fin);
-  } else {
-    setPlan(prev => ({ 
-      ...prev, 
-      fecha_fin: selectedDate, 
-      rango_fechas: generarRangoTexto(prev.fecha_inicio, selectedDate) 
-    }));
-    actualizarFechasSesiones(plan.fecha_inicio, selectedDate);
-  }
-};
+    if (field === 'inicio') {
+      setPlan(prev => ({ 
+        ...prev, 
+        fecha_inicio: selectedDate, 
+        rango_fechas: generarRangoTexto(selectedDate, prev.fecha_fin) 
+      }));
+      actualizarFechasSesiones(selectedDate, plan.fecha_fin);
+    } else {
+      setPlan(prev => ({ 
+        ...prev, 
+        fecha_fin: selectedDate, 
+        rango_fechas: generarRangoTexto(prev.fecha_inicio, selectedDate) 
+      }));
+      actualizarFechasSesiones(plan.fecha_inicio, selectedDate);
+    }
+  };
 
-  // Validación: Se requiere fecha inicio, fecha fin y libro seleccionado
-  const isInvalid = !plan.fecha_inicio || !plan.fecha_fin || !plan.libro_id;
+  const sinLibros = libros.length === 0;
+  const isInvalid = !plan.fecha_inicio || !plan.fecha_fin || !plan.libro_id || sinLibros;
 
   return (
     <div className="bg-white rounded-[2.5rem] p-8 shadow-2xl border border-slate-100 max-w-3xl mx-auto">
@@ -47,6 +46,7 @@ export default function StepLogistica({ plan, setPlan, generarRangoTexto, actual
       </div>
       
       <div className="space-y-6">
+        {/* Fechas */}
         <div className="bg-indigo-50/50 p-6 rounded-[2rem] border border-indigo-100">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="relative group flex flex-col">
@@ -71,30 +71,67 @@ export default function StepLogistica({ plan, setPlan, generarRangoTexto, actual
           )}
         </div>
 
+        {/* Aviso sin libros asignados */}
+        {sinLibros && (
+          <div className="flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4">
+            <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-sm font-black text-amber-700">Sin libros asignados</p>
+              <p className="text-xs text-amber-600 mt-0.5">
+                Tu cuenta aún no tiene libros asignados. Contacta al administrador para que te asigne un grupo con libros.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Libro y Ciclo AMCO */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase ml-2 flex items-center gap-1">
               <BookOpen className="w-3 h-3" /> Seleccionar Libro
             </label>
             <select 
-              className={`w-full p-4 bg-slate-50 rounded-2xl border-2 border-transparent ring-1 font-bold outline-none text-sm transition-all ${!plan.libro_id ? 'ring-amber-200 bg-amber-50/30' : 'ring-slate-200 focus:ring-indigo-500'}`} 
+              className={`w-full p-4 bg-slate-50 rounded-2xl border-2 border-transparent ring-1 font-bold outline-none text-sm transition-all 
+                ${sinLibros 
+                  ? 'ring-red-200 bg-red-50/30 text-slate-400 cursor-not-allowed' 
+                  : !plan.libro_id 
+                    ? 'ring-amber-200 bg-amber-50/30' 
+                    : 'ring-slate-200 focus:ring-indigo-500'
+                }`}
               value={plan.libro_id || ''} 
               onChange={(e) => seleccionarLibro(parseInt(e.target.value))}
+              disabled={sinLibros}
             >
-              <option value="">-- Elige un libro --</option>
-              {libros.map((libro) => (<option key={libro.id_libro} value={libro.id_libro}>{libro.nombre_libro}</option>))}
+              {sinLibros 
+                ? <option value="">— Sin libros asignados —</option>
+                : <>
+                    <option value="">— Elige un libro —</option>
+                    {libros.map((libro) => (
+                      <option key={libro.id_libro} value={libro.id_libro}>{libro.nombre_libro}</option>
+                    ))}
+                  </>
+              }
             </select>
           </div>
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase ml-2 flex items-center gap-1">
               <Layers className="w-3 h-3" /> Ciclo AMCO
             </label>
-            <select className="w-full p-4 bg-slate-50 rounded-2xl border-2 border-transparent ring-1 ring-slate-200 font-bold outline-none text-sm focus:ring-2 focus:ring-indigo-500 transition-all" value={plan.cicloAmco} onChange={e => setPlan({...plan, cicloAmco: e.target.value})}>
-              {ciclosDisponibles.length > 0 ? ciclosDisponibles.map((ciclo) => (<option key={ciclo} value={ciclo}>{ciclo}</option>)) : (<option value="">-- Selecciona libro primero --</option>)}
+            <select 
+              className="w-full p-4 bg-slate-50 rounded-2xl border-2 border-transparent ring-1 ring-slate-200 font-bold outline-none text-sm focus:ring-2 focus:ring-indigo-500 transition-all" 
+              value={plan.cicloAmco} 
+              onChange={e => setPlan({...plan, cicloAmco: e.target.value})}
+              disabled={ciclosDisponibles.length === 0}
+            >
+              {ciclosDisponibles.length > 0 
+                ? ciclosDisponibles.map((ciclo) => (<option key={ciclo} value={ciclo}>{ciclo}</option>)) 
+                : <option value="">— Selecciona libro primero —</option>
+              }
             </select>
           </div>
         </div>
 
+        {/* Ciclo Escolar y CCT */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
             <label className="text-[10px] font-black text-slate-400 uppercase ml-2">Ciclo Escolar</label>
@@ -106,13 +143,18 @@ export default function StepLogistica({ plan, setPlan, generarRangoTexto, actual
           </div>
         </div>
 
+        {/* Link y Recursos */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase ml-2 flex items-center gap-1"><Link className="w-3 h-3" /> Link Clase</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase ml-2 flex items-center gap-1">
+              <Link className="w-3 h-3" /> Link Clase
+            </label>
             <input className="w-full p-4 bg-slate-50 rounded-2xl ring-1 ring-slate-200 font-bold outline-none text-sm focus:ring-2 focus:ring-indigo-500 transition-all" placeholder="https://zoom.us/..." value={plan.link_clase} onChange={e => setPlan({...plan, link_clase: e.target.value})} />
           </div>
           <div className="space-y-2">
-            <label className="text-[10px] font-black text-slate-400 uppercase ml-2 flex items-center gap-1"><Box className="w-3 h-3" /> Recursos Generales</label>
+            <label className="text-[10px] font-black text-slate-400 uppercase ml-2 flex items-center gap-1">
+              <Box className="w-3 h-3" /> Recursos Generales
+            </label>
             <input className="w-full p-4 bg-slate-50 rounded-2xl ring-1 ring-slate-200 font-bold outline-none text-sm focus:ring-2 focus:ring-indigo-500 transition-all" placeholder="Ej. IPAD, LÁPIZ, CRAYOLAS" value={plan.recursos_generales} onChange={e => setPlan({...plan, recursos_generales: e.target.value})} />
           </div>
         </div>
@@ -121,7 +163,7 @@ export default function StepLogistica({ plan, setPlan, generarRangoTexto, actual
       <button 
         onClick={onNext} 
         disabled={isInvalid} 
-        className={`w-full font-black py-6 rounded-[2rem] shadow-2xl mt-10 flex items-center justify-center gap-3 transition-all ${isInvalid ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none scale-100' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200 shadow-xl active:scale-95'}`}
+        className={`w-full font-black py-6 rounded-[2rem] shadow-2xl mt-10 flex items-center justify-center gap-3 transition-all ${isInvalid ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' : 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200 shadow-xl active:scale-95'}`}
       >
         <Plus className="w-6 h-6"/> Empezar Planeación
       </button>

@@ -36,46 +36,42 @@ export function usePlan(session) {
   };
 
   const actualizarFechasSesiones = (fechaInicioStr, fechaFinStr) => {
-  if (!fechaInicioStr || !fechaFinStr) return;
-  const startDate = new Date(fechaInicioStr + "T00:00:00");
-  const endDate = new Date(fechaFinStr + "T00:00:00");
-  if (endDate < startDate) return;
+    if (!fechaInicioStr || !fechaFinStr) return;
+    const startDate = new Date(fechaInicioStr + "T00:00:00");
+    const endDate = new Date(fechaFinStr + "T00:00:00");
+    if (endDate < startDate) return;
 
-  const diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+    const diasSemana = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
-  setSessions((prevSessions) => {
-    const newSessions = [];
-    let currentLoopDate = new Date(startDate);
-
-    // Iteramos por todos los días del rango sin excepciones
-    while (currentLoopDate <= endDate) {
-      const dayOfWeek = currentLoopDate.getDay();
-      const formattedDate = `${currentLoopDate.getDate()} de ${MESES[currentLoopDate.getMonth()]}`;
-      const diaSemanaStr = diasSemana[dayOfWeek];
-      
-      const existingSession = prevSessions.find(s => s.fecha_exacta === formattedDate) || 
-                             { materias: [], tema_relevancia: "" };
-      
-      newSessions.push({
-        id: newSessions.length,
-        dia: diaSemanaStr,
-        fecha_exacta: formattedDate,
-        tema_relevancia: existingSession.tema_relevancia,
-        materias: existingSession.materias
-      });
-
-      currentLoopDate.setDate(currentLoopDate.getDate() + 1);
-    }
-    return newSessions;
-  });
-};
-    const addMateria = (sIdx) => {
-    // Usamos una función de actualización para asegurar que trabajamos con el estado más reciente
     setSessions((prevSessions) => {
-      // 1. Clonamos el array de sesiones
+      const newSessions = [];
+      let currentLoopDate = new Date(startDate);
+
+      while (currentLoopDate <= endDate) {
+        const dayOfWeek = currentLoopDate.getDay();
+        const formattedDate = `${currentLoopDate.getDate()} de ${MESES[currentLoopDate.getMonth()]}`;
+        const diaSemanaStr = diasSemana[dayOfWeek];
+        
+        const existingSession = prevSessions.find(s => s.fecha_exacta === formattedDate) || 
+                               { materias: [], tema_relevancia: "" };
+        
+        newSessions.push({
+          id: newSessions.length,
+          dia: diaSemanaStr,
+          fecha_exacta: formattedDate,
+          tema_relevancia: existingSession.tema_relevancia,
+          materias: existingSession.materias
+        });
+
+        currentLoopDate.setDate(currentLoopDate.getDate() + 1);
+      }
+      return newSessions;
+    });
+  };
+
+  const addMateria = (sIdx) => {
+    setSessions((prevSessions) => {
       const nuevas = [...prevSessions];
-      
-      // 2. Definimos la nueva materia (todos los campos vacíos como pediste)
       const nuevaMateria = {
         hora: "", 
         campo: "",
@@ -91,9 +87,7 @@ export function usePlan(session) {
         cierre: ""
       };
 
-      // 3. Verificamos que el día (sIdx) exista antes de empujar la materia
       if (nuevas[sIdx]) {
-        // Clonamos el array de materias del día específico para mantener inmutabilidad
         nuevas[sIdx] = {
           ...nuevas[sIdx],
           materias: [...nuevas[sIdx].materias, nuevaMateria]
@@ -103,16 +97,15 @@ export function usePlan(session) {
       return nuevas;
     });
   };
+
   const removeMateria = (sIdx, mIdx) => {
     setSessions((prevSessions) => {
-      // Creamos una copia profunda de las sesiones
       const nuevas = [...prevSessions];
-      // Filtramos las materias del día específico (sIdx) 
-      // manteniendo solo las que NO coincidan con el índice seleccionado (mIdx)
       nuevas[sIdx].materias = nuevas[sIdx].materias.filter((_, index) => index !== mIdx);
       return nuevas;
     });
   };
+
   const moverMateria = (sIdx, mIdx, direccion) => {
     const nuevas = [...sessions];
     const materias = [...nuevas[sIdx].materias];
@@ -162,7 +155,6 @@ export function usePlan(session) {
 
   const seleccionarLibro = async (libroId) => {
     try {
-      // Obtener todos los temas del libro seleccionado
       const { data: temasDelLibro } = await supabase
         .from('temas')
         .select('id_tema')
@@ -171,14 +163,12 @@ export function usePlan(session) {
       if (temasDelLibro && temasDelLibro.length > 0) {
         const idsTemasDelLibro = temasDelLibro.map(t => t.id_tema);
         
-        // Obtener ciclos únicos de esos temas a través de tema_ciclos
         const { data: temasConCiclos } = await supabase
           .from('tema_ciclos')
           .select('id_ciclo, ciclos(id_ciclo, nombre_ciclo)')
           .in('id_tema', idsTemasDelLibro);
 
         if (temasConCiclos) {
-          // Extraer ciclos únicos
           const ciclosUnicos = {};
           temasConCiclos.forEach(tc => {
             if (tc.ciclos) {
@@ -188,18 +178,10 @@ export function usePlan(session) {
           const ciclos = Object.values(ciclosUnicos);
           setCiclosDisponibles(ciclos);
           
-          // Si el ciclo actual no existe en el libro nuevo, cambiar al primero disponible
           if (!ciclos.includes(plan.cicloAmco) && ciclos.length > 0) {
-            setPlan({
-              ...plan,
-              libro_id: libroId,
-              cicloAmco: ciclos[0]
-            });
+            setPlan({ ...plan, libro_id: libroId, cicloAmco: ciclos[0] });
           } else {
-            setPlan({
-              ...plan,
-              libro_id: libroId
-            });
+            setPlan({ ...plan, libro_id: libroId });
           }
         } else {
           setCiclosDisponibles([]);
@@ -221,14 +203,19 @@ export function usePlan(session) {
     setSavingPrefs(true);
     try {
       const { error } = await supabase.from('docentes').update({
-        ciclo_escolar_pref: plan.ciclo_escolar, ciclo_amco_pref: plan.cicloAmco,
-        link_clase_pref: plan.link_clase, recursos_pref: plan.recursos_generales,
+        ciclo_escolar_pref: plan.ciclo_escolar,
+        ciclo_amco_pref: plan.cicloAmco,
+        link_clase_pref: plan.link_clase,
+        recursos_pref: plan.recursos_generales,
         libro_id_pref: plan.libro_id
       }).eq('user_id', session.user.id);
       if (error) throw error;
       alert("✅ Preferencias guardadas correctamente.");
-    } catch (e) { alert("Error: " + e.message); } 
-    finally { setSavingPrefs(false); }
+    } catch (e) { 
+      alert("Error: " + e.message); 
+    } finally { 
+      setSavingPrefs(false); 
+    }
   };
 
   // Cargar docente y catálogo al montar
@@ -236,35 +223,29 @@ export function usePlan(session) {
     if (session) {
       const cargarDatos = async () => {
         try {
-          // Intentamos buscar al docente
           let { data: dData, error: dError } = await supabase
             .from('docentes')
             .select('*')
             .eq('user_id', session.user.id)
             .maybeSingle();
 
-          // SI NO EXISTE, LO CREAMOS AUTOMÁTICAMENTE (SOLUCIÓN DEFINITIVA)
           if (!dData && !dError) {
             console.log("Docente nuevo detectado. Creando registro oficial...");
-            
-            // Extraemos nombre del correo o metadatos
             const nombreSugerido = session.user.user_metadata?.full_name || 
-                                 session.user.email.split('@')[0].toUpperCase();
+                                   session.user.email.split('@')[0].toUpperCase();
 
             const { data: nuevoDocente, error: insertError } = await supabase
               .from('docentes')
-              .insert([
-                { 
-                  user_id: session.user.id, 
-                  nombre_completo: nombreSugerido,
-                  correo: session.user.email 
-                }
-              ])
+              .insert([{ 
+                user_id: session.user.id, 
+                nombre_completo: nombreSugerido,
+                correo: session.user.email 
+              }])
               .select()
               .single();
 
             if (insertError) throw insertError;
-            dData = nuevoDocente; // Ahora ya tenemos datos oficiales
+            dData = nuevoDocente;
           }
 
           if (dData) {
@@ -277,34 +258,42 @@ export function usePlan(session) {
               recursos_generales: dData.recursos_pref || prev.recursos_generales,
               libro_id: dData.libro_id_pref || null
             }));
-          }
 
-          // Cargar catálogo de materias con relaciones
-          const { data: cData } = await supabase.from('contenido_temas').select('*, temas(id_materia, tema, materias(campo_formativo))');
-          if (cData) {
-            // Aplanar la estructura para que autoRellenar pueda buscar correctamente
-            const catalogAplanado = cData.map(ct => ({
-              ...ct,
-              campo_formativo: ct.temas?.materias?.campo_formativo || '',
-              tema: ct.temas?.tema || ''
-            }));
-            setCatalog(catalogAplanado);
-          }
+            // ✅ CAMBIO: Cargar solo los libros asignados al docente vía grupos → cursos
+            const { data: gruposData } = await supabase
+              .from('grupos')
+              .select(`
+                id_grupo,
+                nombre_grupo,
+                cursos(
+                  libros(id_libro, nombre_libro)
+                )
+              `)
+              .eq('id_docente', dData.id_docente);
 
-          // Cargar libros disponibles
-          const { data: librosData } = await supabase.from('libros').select('*');
-          if (librosData) {
-            setLibros(librosData);
-            
-            // Si el docente tiene un libro preferido, cargar sus ciclos
-            if (dData?.libro_id_pref) {
-              const temasDelLibro = await supabase
+            // Aplanar para obtener libros únicos sin duplicados
+            const librosMap = {};
+            if (gruposData) {
+              gruposData.forEach(grupo => {
+                grupo.cursos?.forEach(curso => {
+                  if (curso.libros) {
+                    librosMap[curso.libros.id_libro] = curso.libros;
+                  }
+                });
+              });
+            }
+            const librosUnicos = Object.values(librosMap);
+            setLibros(librosUnicos);
+
+            // Si el docente tiene libro preferido, cargar sus ciclos
+            if (dData.libro_id_pref) {
+              const { data: temasDelLibro } = await supabase
                 .from('temas')
                 .select('id_tema')
                 .eq('id_libro', dData.libro_id_pref);
               
-              if (temasDelLibro.data && temasDelLibro.data.length > 0) {
-                const idsTemasDelLibro = temasDelLibro.data.map(t => t.id_tema);
+              if (temasDelLibro && temasDelLibro.length > 0) {
+                const idsTemasDelLibro = temasDelLibro.map(t => t.id_tema);
                 
                 const { data: temasConCiclos } = await supabase
                   .from('tema_ciclos')
@@ -324,8 +313,22 @@ export function usePlan(session) {
             }
           }
 
+          // Cargar catálogo de materias con relaciones
+          const { data: cData } = await supabase
+            .from('contenido_temas')
+            .select('*, temas(id_materia, tema, materias(campo_formativo))');
+
+          if (cData) {
+            const catalogAplanado = cData.map(ct => ({
+              ...ct,
+              campo_formativo: ct.temas?.materias?.campo_formativo || '',
+              tema: ct.temas?.tema || ''
+            }));
+            setCatalog(catalogAplanado);
+          }
+
         } catch (err) {
-          console.error("Error en el auto-registro:", err.message);
+          console.error("Error en la carga inicial:", err.message);
         } finally {
           setLoading(false);
         }
@@ -338,13 +341,11 @@ export function usePlan(session) {
   useEffect(() => {
     const cargarTemasFiltratos = async () => {
       if (!plan.libro_id || !plan.cicloAmco) {
-        // Si no hay libro o ciclo seleccionados, mostrar catálogo completo
         setTemasDisponibles(catalog);
         return;
       }
 
       try {
-        // 1. Obtener todos los temas del libro seleccionado
         const { data: temasDelLibro } = await supabase
           .from('temas')
           .select('id_tema')
@@ -357,7 +358,6 @@ export function usePlan(session) {
 
         const idsTemasDelLibro = temasDelLibro.map(t => t.id_tema);
 
-        // 2. Obtener el id del ciclo seleccionado
         const { data: cicloSeleccionado } = await supabase
           .from('ciclos')
           .select('id_ciclo')
@@ -369,7 +369,6 @@ export function usePlan(session) {
           return;
         }
 
-        // 3. Obtener temas que están en el ciclo seleccionado
         const { data: temasEnCiclo } = await supabase
           .from('tema_ciclos')
           .select('id_tema')
@@ -383,15 +382,13 @@ export function usePlan(session) {
 
         const idsTemasEnCiclo = temasEnCiclo.map(t => t.id_tema);
 
-        // 4. Obtener el contenido de esos temas
-        const { data: contenigoFiltrado } = await supabase
+        const { data: contenidoFiltrado } = await supabase
           .from('contenido_temas')
           .select('*, temas(id_materia, tema, materias(campo_formativo))')
           .in('id_tema', idsTemasEnCiclo);
 
-        if (contenigoFiltrado) {
-          // Aplanar la estructura para que sea compatible con lo que StepPlaneacion espera
-          const temasConCampo = contenigoFiltrado.map(ct => ({
+        if (contenidoFiltrado) {
+          const temasConCampo = contenidoFiltrado.map(ct => ({
             ...ct,
             campo_formativo: ct.temas?.materias?.campo_formativo || '',
             tema: ct.temas?.tema || ''
