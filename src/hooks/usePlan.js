@@ -73,27 +73,13 @@ export function usePlan(session) {
     setSessions((prevSessions) => {
       const nuevas = [...prevSessions];
       const nuevaMateria = {
-        hora: "", 
-        campo: "",
-        tema: "", 
-        pagina: "", 
-        recursos_materia: "", 
-        eje_ambito: "", 
-        aprendizaje: "", 
-        im: "", 
-        concepto_evaluar: "", 
-        inicio: "", 
-        desarrollo: "", 
-        cierre: ""
+        hora: "", campo: "", tema: "", pagina: "", 
+        recursos_materia: "", eje_ambito: "", aprendizaje: "", 
+        im: "", concepto_evaluar: "", inicio: "", desarrollo: "", cierre: ""
       };
-
       if (nuevas[sIdx]) {
-        nuevas[sIdx] = {
-          ...nuevas[sIdx],
-          materias: [...nuevas[sIdx].materias, nuevaMateria]
-        };
+        nuevas[sIdx] = { ...nuevas[sIdx], materias: [...nuevas[sIdx].materias, nuevaMateria] };
       }
-
       return nuevas;
     });
   };
@@ -124,16 +110,11 @@ export function usePlan(session) {
     if (datosBD) {
       newSessions[sIdx].materias[mIdx] = {
         ...materiaActual, 
-        tema: datosBD.tema, 
-        pagina: datosBD.pagina || "",
-        recursos_materia: datosBD.recursos_materia || "", 
-        eje_ambito: datosBD.eje_ambito || "",
-        aprendizaje: datosBD.aprendizaje || "", 
-        im: datosBD.im || "",
-        concepto_evaluar: datosBD.concepto_evaluar || "", 
-        inicio: datosBD.inicio || "",
-        desarrollo: datosBD.desarrollo || "", 
-        cierre: datosBD.cierre || ""
+        tema: datosBD.tema, pagina: datosBD.pagina || "",
+        recursos_materia: datosBD.recursos_materia || "", eje_ambito: datosBD.eje_ambito || "",
+        aprendizaje: datosBD.aprendizaje || "", im: datosBD.im || "",
+        concepto_evaluar: datosBD.concepto_evaluar || "", inicio: datosBD.inicio || "",
+        desarrollo: datosBD.desarrollo || "", cierre: datosBD.cierre || ""
       };
     } else { 
       newSessions[sIdx].materias[mIdx].tema = temaNombre; 
@@ -156,13 +137,10 @@ export function usePlan(session) {
   const seleccionarLibro = async (libroId) => {
     try {
       const { data: temasDelLibro } = await supabase
-        .from('temas')
-        .select('id_tema')
-        .eq('id_libro', libroId);
+        .from('temas').select('id_tema').eq('id_libro', libroId);
 
       if (temasDelLibro && temasDelLibro.length > 0) {
         const idsTemasDelLibro = temasDelLibro.map(t => t.id_tema);
-        
         const { data: temasConCiclos } = await supabase
           .from('tema_ciclos')
           .select('id_ciclo, ciclos(id_ciclo, nombre_ciclo)')
@@ -171,13 +149,10 @@ export function usePlan(session) {
         if (temasConCiclos) {
           const ciclosUnicos = {};
           temasConCiclos.forEach(tc => {
-            if (tc.ciclos) {
-              ciclosUnicos[tc.ciclos.id_ciclo] = tc.ciclos.nombre_ciclo;
-            }
+            if (tc.ciclos) ciclosUnicos[tc.ciclos.id_ciclo] = tc.ciclos.nombre_ciclo;
           });
           const ciclos = Object.values(ciclosUnicos);
           setCiclosDisponibles(ciclos);
-          
           if (!ciclos.includes(plan.cicloAmco) && ciclos.length > 0) {
             setPlan({ ...plan, libro_id: libroId, cicloAmco: ciclos[0] });
           } else {
@@ -203,10 +178,8 @@ export function usePlan(session) {
     setSavingPrefs(true);
     try {
       const { error } = await supabase.from('docentes').update({
-        ciclo_escolar_pref: plan.ciclo_escolar,
-        ciclo_amco_pref: plan.cicloAmco,
-        link_clase_pref: plan.link_clase,
-        recursos_pref: plan.recursos_generales,
+        ciclo_escolar_pref: plan.ciclo_escolar, ciclo_amco_pref: plan.cicloAmco,
+        link_clase_pref: plan.link_clase, recursos_pref: plan.recursos_generales,
         libro_id_pref: plan.libro_id
       }).eq('user_id', session.user.id);
       if (error) throw error;
@@ -224,26 +197,15 @@ export function usePlan(session) {
       const cargarDatos = async () => {
         try {
           let { data: dData, error: dError } = await supabase
-            .from('docentes')
-            .select('*')
-            .eq('user_id', session.user.id)
-            .maybeSingle();
+            .from('docentes').select('*').eq('user_id', session.user.id).maybeSingle();
 
           if (!dData && !dError) {
-            console.log("Docente nuevo detectado. Creando registro oficial...");
             const nombreSugerido = session.user.user_metadata?.full_name || 
                                    session.user.email.split('@')[0].toUpperCase();
-
             const { data: nuevoDocente, error: insertError } = await supabase
               .from('docentes')
-              .insert([{ 
-                user_id: session.user.id, 
-                nombre_completo: nombreSugerido,
-                correo: session.user.email 
-              }])
-              .select()
-              .single();
-
+              .insert([{ user_id: session.user.id, nombre_completo: nombreSugerido, correo: session.user.email }])
+              .select().single();
             if (insertError) throw insertError;
             dData = nuevoDocente;
           }
@@ -259,53 +221,61 @@ export function usePlan(session) {
               libro_id: dData.libro_id_pref || null
             }));
 
-            // ✅ CAMBIO: Cargar solo los libros asignados al docente vía grupos → cursos
-            const { data: gruposData } = await supabase
-              .from('grupos')
-              .select(`
-                id_grupo,
-                nombre_grupo,
-                cursos(
-                  libros(id_libro, nombre_libro)
-                )
-              `)
-              .eq('id_docente', dData.id_docente);
+            // ✅ Consulta única relacional: Trae los grupos, y dentro sus cursos, y dentro sus libros.
+const { data: gruposData, error: gruposError } = await supabase
+  .from('grupos')
+  .select(`
+    id_grupo,
+    cursos (
+      libros (
+        id_libro,
+        nombre_libro
+      )
+    )
+  `)
+  .eq('id_docente', dData.id_docente);
 
-            // Aplanar para obtener libros únicos sin duplicados
-            const librosMap = {};
-            if (gruposData) {
-              gruposData.forEach(grupo => {
-                grupo.cursos?.forEach(curso => {
-                  if (curso.libros) {
-                    librosMap[curso.libros.id_libro] = curso.libros;
-                  }
-                });
-              });
-            }
-            const librosUnicos = Object.values(librosMap);
-            setLibros(librosUnicos);
+if (gruposError) {
+  console.error("🚨 Error cargando la información relacional:", gruposError);
+} else if (gruposData) {
+  const librosMap = {};
 
-            // Si el docente tiene libro preferido, cargar sus ciclos
+  // Extraemos los libros de la respuesta anidada
+  gruposData.forEach(grupo => {
+    if (grupo.cursos) {
+      grupo.cursos.forEach(curso => {
+        // Verificamos que el curso tenga un libro asignado y no sea null
+        if (curso.libros) {
+          librosMap[curso.libros.id_libro] = curso.libros;
+        }
+      });
+    }
+  });
+
+  const librosFinales = Object.values(librosMap);
+  setLibros(librosFinales);
+  
+  if (librosFinales.length === 0) {
+    console.warn("⚠️ La consulta fue exitosa, pero no se encontraron libros asociados a este docente.");
+  }
+}
+
+            // Si tiene libro preferido, cargar sus ciclos
             if (dData.libro_id_pref) {
               const { data: temasDelLibro } = await supabase
-                .from('temas')
-                .select('id_tema')
-                .eq('id_libro', dData.libro_id_pref);
+                .from('temas').select('id_tema').eq('id_libro', dData.libro_id_pref);
               
               if (temasDelLibro && temasDelLibro.length > 0) {
-                const idsTemasDelLibro = temasDelLibro.map(t => t.id_tema);
-                
+                const ids = temasDelLibro.map(t => t.id_tema);
                 const { data: temasConCiclos } = await supabase
                   .from('tema_ciclos')
                   .select('id_ciclo, ciclos(id_ciclo, nombre_ciclo)')
-                  .in('id_tema', idsTemasDelLibro);
+                  .in('id_tema', ids);
                 
                 if (temasConCiclos) {
                   const ciclosUnicos = {};
                   temasConCiclos.forEach(tc => {
-                    if (tc.ciclos) {
-                      ciclosUnicos[tc.ciclos.id_ciclo] = tc.ciclos.nombre_ciclo;
-                    }
+                    if (tc.ciclos) ciclosUnicos[tc.ciclos.id_ciclo] = tc.ciclos.nombre_ciclo;
                   });
                   setCiclosDisponibles(Object.values(ciclosUnicos));
                 }
@@ -313,18 +283,17 @@ export function usePlan(session) {
             }
           }
 
-          // Cargar catálogo de materias con relaciones
+          // Cargar catálogo
           const { data: cData } = await supabase
             .from('contenido_temas')
             .select('*, temas(id_materia, tema, materias(campo_formativo))');
 
           if (cData) {
-            const catalogAplanado = cData.map(ct => ({
+            setCatalog(cData.map(ct => ({
               ...ct,
               campo_formativo: ct.temas?.materias?.campo_formativo || '',
               tema: ct.temas?.tema || ''
-            }));
-            setCatalog(catalogAplanado);
+            })));
           }
 
         } catch (err) {
@@ -347,38 +316,23 @@ export function usePlan(session) {
 
       try {
         const { data: temasDelLibro } = await supabase
-          .from('temas')
-          .select('id_tema')
-          .eq('id_libro', plan.libro_id);
+          .from('temas').select('id_tema').eq('id_libro', plan.libro_id);
 
-        if (!temasDelLibro || temasDelLibro.length === 0) {
-          setTemasDisponibles(catalog);
-          return;
-        }
+        if (!temasDelLibro || temasDelLibro.length === 0) { setTemasDisponibles(catalog); return; }
 
         const idsTemasDelLibro = temasDelLibro.map(t => t.id_tema);
 
         const { data: cicloSeleccionado } = await supabase
-          .from('ciclos')
-          .select('id_ciclo')
-          .eq('nombre_ciclo', plan.cicloAmco)
-          .single();
+          .from('ciclos').select('id_ciclo').eq('nombre_ciclo', plan.cicloAmco).single();
 
-        if (!cicloSeleccionado) {
-          setTemasDisponibles(catalog);
-          return;
-        }
+        if (!cicloSeleccionado) { setTemasDisponibles(catalog); return; }
 
         const { data: temasEnCiclo } = await supabase
-          .from('tema_ciclos')
-          .select('id_tema')
+          .from('tema_ciclos').select('id_tema')
           .eq('id_ciclo', cicloSeleccionado.id_ciclo)
           .in('id_tema', idsTemasDelLibro);
 
-        if (!temasEnCiclo || temasEnCiclo.length === 0) {
-          setTemasDisponibles(catalog);
-          return;
-        }
+        if (!temasEnCiclo || temasEnCiclo.length === 0) { setTemasDisponibles(catalog); return; }
 
         const idsTemasEnCiclo = temasEnCiclo.map(t => t.id_tema);
 
@@ -388,12 +342,11 @@ export function usePlan(session) {
           .in('id_tema', idsTemasEnCiclo);
 
         if (contenidoFiltrado) {
-          const temasConCampo = contenidoFiltrado.map(ct => ({
+          setTemasDisponibles(contenidoFiltrado.map(ct => ({
             ...ct,
             campo_formativo: ct.temas?.materias?.campo_formativo || '',
             tema: ct.temas?.tema || ''
-          }));
-          setTemasDisponibles(temasConCampo);
+          })));
         } else {
           setTemasDisponibles(catalog);
         }
@@ -407,27 +360,10 @@ export function usePlan(session) {
   }, [plan.libro_id, plan.cicloAmco, catalog]);
 
   return {
-    plan,
-    setPlan,
-    sessions,
-    setSessions,
-    docente,
-    setDocente,
-    loading,
-    savingPrefs,
-    catalog,
-    temasDisponibles,
-    libros,
-    ciclosDisponibles,
-    generarRangoTexto,
-    actualizarFechasSesiones,
-    addMateria,
-    moverMateria,
-    removeMateria,
-    autoRellenar,
-    updateMateria,
-    updateSessionLogistics,
-    guardarPreferencias,
-    seleccionarLibro
+    plan, setPlan, sessions, setSessions, docente, setDocente,
+    loading, savingPrefs, catalog, temasDisponibles, libros, ciclosDisponibles,
+    generarRangoTexto, actualizarFechasSesiones, addMateria, moverMateria,
+    removeMateria, autoRellenar, updateMateria, updateSessionLogistics,
+    guardarPreferencias, seleccionarLibro
   };
 }
