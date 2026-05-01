@@ -22,27 +22,18 @@ export default function App() {
     return () => subscription?.unsubscribe();
   }, []);
 
-  // Verificar si es admin
+  // Verificar si es admin desde app_metadata
   useEffect(() => {
-    if (!session?.user?.id) {
+    if (!session?.user) {
       setCheckingAdmin(false);
       return;
     }
-
-    const checkAdmin = async () => {
-      console.log('Verificando admin...');
-      const { data, error } = await supabase
-        .from('docentes')
-        .select('is_admin')
-        .eq('user_id', session.user.id)
-        .single();
-      
-      console.log('Resultado admin:', { data, error });
-      setIsAdmin(data?.is_admin || false);
-      setCheckingAdmin(false);
-    };
-
-    checkAdmin();
+    
+    console.log('Verificando admin desde metadata...');
+    const role = session.user.app_metadata?.role;
+    console.log('Role:', role);
+    setIsAdmin(role === 'admin');
+    setCheckingAdmin(false);
   }, [session]);
 
   if (!session) return <Login />;
