@@ -4,61 +4,9 @@ import { supabase } from './supabaseClient';
 import Login from './components/auth/Login';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
-import StepLogistica from './components/steps/StepLogistica';
-import StepPlaneacion from './components/steps/StepPlaneacion';
-import StepVistaPrevia from './components/steps/StepVistaPrevia';
-import { usePlan } from './hooks/usePlan';
 import AdminPanel from './components/admin/AdminPanel';
 
-export default function App() {
-  const [session, setSession] = useState(null);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [checkingAdmin, setCheckingAdmin] = useState(true);
-
-  // Monitorear sesión
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
-    return () => subscription?.unsubscribe();
-  }, []);
-
-  // Verificar si es admin desde app_metadata
-  useEffect(() => {
-    if (!session?.user) {
-      setCheckingAdmin(false);
-      return;
-    }
-
-    // Pequeño async para evitar setState síncrono
-    const checkAdmin = async () => {
-      const role = session.user.app_metadata?.role;
-      setIsAdmin(role === 'admin');
-      setCheckingAdmin(false);
-    };
-
-    checkAdmin();
-  }, [session]);
-
-  if (!session) return <Login />;
-
-  if (checkingAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-indigo-950 text-white">
-        <Loader2 className="animate-spin mr-2" /> Verificando permisos...
-      </div>
-    );
-  }
-
-  // Si es admin, ir al panel admin
-  if (isAdmin) {
-    return <AdminPanel onVolver={() => supabase.auth.signOut()} />;
-  }
-
-  // Si no es admin, cargar el flujo normal de planeación
-  return <Planificador session={session} />;
-}
-
-// Componente separado para planificador (solo carga si NO es admin)
+// Componente Planificador (fuera de App)
 function Planificador({ session }) {
   const [step, setStep] = useState(1);
   const [activeSession, setActiveSession] = useState(0);
@@ -144,4 +92,52 @@ function Planificador({ session }) {
       <Footer docente={docente} />
     </div>
   );
+}
+
+export default function App() {
+  const [session, setSession] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
+
+  // Monitorear sesión
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+    return () => subscription?.unsubscribe();
+  }, []);
+
+  // Verificar si es admin desde app_metadata
+  useEffect(() => {
+    if (!session?.user) {
+      setCheckingAdmin(false);
+      return;
+    }
+
+    // Pequeño async para evitar setState síncrono
+    const checkAdmin = async () => {
+      const role = session.user.app_metadata?.role;
+      setIsAdmin(role === 'admin');
+      setCheckingAdmin(false);
+    };
+
+    checkAdmin();
+  }, [session]);
+
+  if (!session) return <Login />;
+
+  if (checkingAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-indigo-950 text-white">
+        <Loader2 className="animate-spin mr-2" /> Verificando permisos...
+      </div>
+    );
+  }
+
+  // Si es admin, ir al panel admin
+  if (isAdmin) {
+    return <AdminPanel onVolver={() => supabase.auth.signOut()} />;
+  }
+
+  // Si no es admin, cargar el flujo normal de planeación
+  return <Planificador session={session} />;
 }
