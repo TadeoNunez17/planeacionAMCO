@@ -194,6 +194,13 @@ export function usePlan(session) {
   // Cargar docente y catálogo al montar
   useEffect(() => {
     if (session) {
+      // Si es admin, no cargar datos de docente
+      const role = session.user.app_metadata?.role;
+      if (role === 'admin') {
+        setLoading(false);
+        return;
+      }
+
       const cargarDatos = async () => {
         try {
           let { data: dData, error: dError } = await supabase
