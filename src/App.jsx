@@ -45,10 +45,6 @@ export default function App() {
   }, []);
 
   if (!session) return <Login />;
-
-  if (docente?.is_admin) {
-    return <AdminPanel onVolver={() => supabase.auth.signOut()} />;
-  }
   
   if (loading) {
     return (
@@ -57,7 +53,11 @@ export default function App() {
       </div>
     );
   }
-
+  
+  if (docente?.is_admin) {
+    return <AdminPanel onVolver={() => supabase.auth.signOut()} />;
+  }
+  
   return (
     <div className="min-h-screen bg-slate-50 pb-20 font-sans">
       <Header />
