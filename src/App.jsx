@@ -1,17 +1,68 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { supabase } from './supabaseClient';
-import { usePlan } from './hooks/usePlan';
 import Login from './components/auth/Login';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
-import StepLogistica from './components/steps/StepLogistica';
-import StepPlaneacion from './components/steps/StepPlaneacion';
-import StepVistaPrevia from './components/steps/StepVistaPrevia';
+import { usePlan } from './hooks/usePlan';
 import AdminPanel from './components/admin/AdminPanel';
 
 export default function App() {
   const [session, setSession] = useState(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [checkingAdmin, setCheckingAdmin] = useState(true);
+
+  // Monitorear sesión
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+    return () => subscription?.unsubscribe();
+  }, []);
+
+  // Verificar si es admin
+  useEffect(() => {
+    if (!session?.user?.id) {
+      setCheckingAdmin(false);
+      return;
+    }
+
+    const checkAdmin = async () => {
+      console.log('Verificando admin...');
+      const { data, error } = await supabase
+        .from('docentes')
+        .select('is_admin')
+        .eq('user_id', session.user.id)
+        .single();
+      
+      console.log('Resultado admin:', { data, error });
+      setIsAdmin(data?.is_admin || false);
+      setCheckingAdmin(false);
+    };
+
+    checkAdmin();
+  }, [session]);
+
+  if (!session) return <Login />;
+
+  if (checkingAdmin) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-indigo-950 text-white">
+        <Loader2 className="animate-spin mr-2" /> Verificando permisos...
+      </div>
+    );
+  }
+
+  // Si es admin, ir al panel admin
+  if (isAdmin) {
+    return <AdminPanel onVolver={() => supabase.auth.signOut()} />;
+  }
+
+  // Si no es admin, cargar el flujo normal de planeación
+  return <Planificador session={session} />;
+}
+
+// Componente separado para planificador (solo carga si NO es admin)
+function Planificador({ session }) {
   const [step, setStep] = useState(1);
   const [activeSession, setActiveSession] = useState(0);
 
@@ -22,14 +73,14 @@ export default function App() {
     docente,
     loading,
     savingPrefs,
-    temasDisponibles, // Obtenido del hook
+    temasDisponibles,
     libros,
     ciclosDisponibles,
     generarRangoTexto,
     actualizarFechasSesiones,
     addMateria,
     moverMateria,
-    removeMateria,    // Agregado para que funcione el borrado
+    removeMateria,
     autoRellenar,
     updateMateria,
     updateSessionLogistics,
@@ -37,15 +88,6 @@ export default function App() {
     seleccionarLibro
   } = usePlan(session);
 
-  // Monitorear cambios de sesión de autenticación
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
-    return () => subscription?.unsubscribe();
-  }, []);
-
-  if (!session) return <Login />;
-  
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-indigo-950 text-white">
@@ -53,15 +95,10 @@ export default function App() {
       </div>
     );
   }
-  
-  if (docente?.is_admin) {
-    return <AdminPanel onVolver={() => supabase.auth.signOut()} />;
-  }
-  
+
   return (
     <div className="min-h-screen bg-slate-50 pb-20 font-sans">
       <Header />
-
       <div className="container mx-auto p-4">
         {step === 1 && (
           <StepLogistica 
@@ -85,11 +122,11 @@ export default function App() {
             setActiveSession={setActiveSession}
             addMateria={addMateria}
             moverMateria={moverMateria}
-            removeMateria={removeMateria} // Se pasa la función de borrado
+            removeMateria={removeMateria}
             autoRellenar={autoRellenar}
             updateMateria={updateMateria}
             updateSessionLogistics={updateSessionLogistics}
-            temasDisponibles={temasDisponibles} // Cambiado de 'catalog' a 'temasDisponibles'
+            temasDisponibles={temasDisponibles}
             onBack={() => setStep(1)}
             onNext={() => setStep(3)}
           />
@@ -105,7 +142,6 @@ export default function App() {
           />
         )}
       </div>
-
       <Footer docente={docente} />
     </div>
   );
