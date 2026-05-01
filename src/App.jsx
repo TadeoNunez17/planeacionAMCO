@@ -4,6 +4,9 @@ import { supabase } from './supabaseClient';
 import Login from './components/auth/Login';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
+import StepLogistica from './components/steps/StepLogistica';
+import StepPlaneacion from './components/steps/StepPlaneacion';
+import StepVistaPrevia from './components/steps/StepVistaPrevia';
 import { usePlan } from './hooks/usePlan';
 import AdminPanel from './components/admin/AdminPanel';
 
@@ -99,6 +102,7 @@ function Planificador({ session }) {
   return (
     <div className="min-h-screen bg-slate-50 pb-20 font-sans">
       <Header />
+      
       <div className="container mx-auto p-4">
         {step === 1 && (
           <StepLogistica 
@@ -142,6 +146,7 @@ function Planificador({ session }) {
           />
         )}
       </div>
+
       <Footer docente={docente} />
     </div>
   );
