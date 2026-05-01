@@ -28,12 +28,15 @@ export default function App() {
       setCheckingAdmin(false);
       return;
     }
-    
-    console.log('Verificando admin desde metadata...');
-    const role = session.user.app_metadata?.role;
-    console.log('Role:', role);
-    setIsAdmin(role === 'admin');
-    setCheckingAdmin(false);
+
+    // Pequeño async para evitar setState síncrono
+    const checkAdmin = async () => {
+      const role = session.user.app_metadata?.role;
+      setIsAdmin(role === 'admin');
+      setCheckingAdmin(false);
+    };
+
+    checkAdmin();
   }, [session]);
 
   if (!session) return <Login />;
