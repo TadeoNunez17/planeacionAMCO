@@ -8,11 +8,13 @@ import Footer from './components/layout/Footer';
 import StepLogistica from './components/steps/StepLogistica';
 import StepPlaneacion from './components/steps/StepPlaneacion';
 import StepVistaPrevia from './components/steps/StepVistaPrevia';
+import AdminPanel from './components/admin/AdminPanel';
 
 export default function App() {
   const [session, setSession] = useState(null);
   const [step, setStep] = useState(1);
   const [activeSession, setActiveSession] = useState(0);
+  const [showAdmin, setShowAdmin] = useState(false);
 
   const {
     plan,
@@ -44,6 +46,10 @@ export default function App() {
   }, []);
 
   if (!session) return <Login />;
+
+  if (showAdmin || (docente?.is_admin && !showAdmin)) {
+    return <AdminPanel onVolver={() => setShowAdmin(false)} />;
+  }
   
   if (loading) {
     return (
@@ -55,7 +61,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20 font-sans">
-      <Header />
+      <Header onAdmin={() => setShowAdmin(true)} />
 
       <div className="container mx-auto p-4">
         {step === 1 && (
