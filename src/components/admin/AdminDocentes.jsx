@@ -28,13 +28,13 @@ export default function AdminDocentes() {
   const handleCrear = async (e) => {
     e.preventDefault();
     setLoadingAction(true);
-    const result = await crearDocente(formData.email, formData.nombre);
+    const result = await crearDocente(formData.email, formData.nombre, formData.is_admin);
     setLoadingAction(false);
     
     if (result.success) {
       setMostrarModal(false);
-      setFormData({ email: '', nombre: '', is_admin: true });
-      setMensaje({ tipo: 'success', texto: 'Administrador invitado exitosamente' });
+      setFormData({ email: '', nombre: '', is_admin: false });
+      setMensaje({ tipo: 'success', texto: 'Docente invitado exitosamente' });
     } else {
       setMensaje({ tipo: 'error', texto: result.error });
     }
@@ -51,20 +51,20 @@ export default function AdminDocentes() {
     
     if (result.success) {
       setMostrarModal(false);
-      setMensaje({ tipo: 'success', texto: 'Administrador actualizado' });
+      setMensaje({ tipo: 'success', texto: 'Docente actualizado' });
     } else {
       setMensaje({ tipo: 'error', texto: result.error });
     }
   };
 
   const handleEliminar = async (docente) => {
-    if (!confirm(`¿Eliminar administrador ${docente.nombre_completo}? Esta acción también eliminará sus grupos asignados.`)) {
+    if (!confirm(`¿Eliminar a ${docente.nombre_completo}? Esta acción también eliminará sus grupos asignados.`)) {
       return;
     }
     
     const result = await eliminarDocente(docente.id_docente);
     if (result.success) {
-      setMensaje({ tipo: 'success', texto: 'Administrador eliminado' });
+      setMensaje({ tipo: 'success', texto: 'Docente eliminado' });
     } else {
       setMensaje({ tipo: 'error', texto: result.error });
     }
@@ -94,13 +94,13 @@ export default function AdminDocentes() {
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold text-slate-800">Gestión de Administradores</h2>
+        <h2 className="text-xl font-bold text-slate-800">Gestión de Docentes</h2>
         <button
           onClick={abrirCrear}
           className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2 transition-colors"
         >
           <Plus className="w-4 h-4" />
-          Agregar Admin
+          Invitar Docente
         </button>
       </div>
 
@@ -144,7 +144,7 @@ export default function AdminDocentes() {
               </tr>
             ) : docentesFiltrados.length === 0 ? (
               <tr>
-                <td colSpan="5" className="px-4 py-8 text-center text-slate-500">No se encontraron administradores</td>
+                <td colSpan="5" className="px-4 py-8 text-center text-slate-500">No se encontraron docentes</td>
               </tr>
             ) : (
               docentesFiltrados.map(docente => (

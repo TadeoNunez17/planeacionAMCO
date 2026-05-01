@@ -14,7 +14,6 @@ export default function App() {
   const [session, setSession] = useState(null);
   const [step, setStep] = useState(1);
   const [activeSession, setActiveSession] = useState(0);
-  const [showAdmin, setShowAdmin] = useState(false);
 
   const {
     plan,
@@ -47,8 +46,8 @@ export default function App() {
 
   if (!session) return <Login />;
 
-  if (showAdmin || (docente?.is_admin && !showAdmin)) {
-    return <AdminPanel onVolver={() => setShowAdmin(false)} />;
+  if (docente?.is_admin) {
+    return <AdminPanel onVolver={() => supabase.auth.signOut()} />;
   }
   
   if (loading) {
@@ -61,7 +60,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-20 font-sans">
-      <Header onAdmin={() => setShowAdmin(true)} />
+      <Header />
 
       <div className="container mx-auto p-4">
         {step === 1 && (

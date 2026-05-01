@@ -16,111 +16,118 @@ export function useAdmin() {
   const [gruposDocente, setGruposDocente] = useState([]);
   const [docenteSeleccionado, setDocenteSeleccionado] = useState(null);
 
-  // Cargar docentes admin con conteo de grupos
+  // Cargar docentes (versión simplificada)
   const cargarDocentes = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('docentes')
-      .select(`
-        *,
-        grupos:grupos(count)
-      `)
-      .eq('is_admin', true)
-      .order('nombre_completo');
-    
-    if (!error && data) {
-      const docentesConConteo = data.map(d => ({
-        ...d,
-        total_grupos: d.grupos?.[0]?.count || 0
-      }));
-      setDocentes(docentesConConteo);
+    try {
+      console.log('1. Cargando docentes...');
+      
+      const { data, error } = await supabase
+        .from('docentes')
+        .select('*')
+        .order('nombre_completo');
+      
+      console.log('2. Respuesta:', { data, error, count: data?.length });
+      
+      if (error) {
+        console.error('3. Error de Supabase:', error);
+        setLoading(false);
+        return;
+      }
+      
+      if (!data) {
+        console.log('4. Data es null/undefined');
+        setDocentes([]);
+      } else {
+        console.log('5. Datos recibidos:', data.length, 'docentes');
+        const docs = data.map(d => ({
+          ...d,
+          is_admin: d.is_admin || false,
+          total_grupos: 0
+        }));
+        setDocentes(docs);
+      }
+    } catch (e) {
+      console.error('6. Error inesperado:', e);
     }
     setLoading(false);
   }, []);
 
-  // Cargar libros con conteo de docentes asignados
+  // Cargar libros
   const cargarLibros = useCallback(async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('libros')
-      .select(`
-        *,
-        cursos:cursos(
-          grupos:grupos(count)
-        )
-      `)
-      .order('nombre_libro');
-    
-    if (!error && data) {
-      const librosConConteo = data.map(l => {
-        const totalDocentes = l.cursos?.reduce((acc, curso) => {
-          return acc + (curso.grupos?.[0]?.count || 0);
-        }, 0);
-        return { ...l, total_docentes: totalDocentes };
-      });
+    try {
+      const { data, error } = await supabase
+        .from('libros')
+        .select('*')
+        .order('nombre_libro');
+      
+      if (error) {
+        console.error('Error cargando libros:', error);
+        setLoading(false);
+        return;
+      }
+      
+      // Agregar conteo de docentes para cada libro
+      const librosConConteo = await Promise.all(
+        data.map(async (l) => {
+          // Contar cuántos grupos usan este libro
+          const { count: gruposCount } = await supabase
+            .from('cursos')
+            .select('*', { count: 'exact', head: true })
+            .eq('id_libro', l.id_libro);
+          
+          return {
+            ...l,
+            total_docentes: gruposCount || 0
+          };
+        })
+      );
+      
       setLibros(librosConConteo);
+    } catch (e) {
+      console.error('Error:', e);
     }
     setLoading(false);
   }, []);
 
   // Crear docente (invitar por email)
-  const crearDocente = useCallback(async (email, nombre) => {
+  const crearDocente = useCallback(async (email, nombre, isAdmin = false) => {
     try {
-      // Intentar invitar usando admin API
-      const { data: authData, error: authError } = await supabase.auth.admin.inviteUserByEmail(email);
+      // Insertar en tabla docentes primero (sin auth si no hay permisos)
+      const { data: docenteData, error: dbError } = await supabase
+        .from('docentes')
+        .insert([{
+          nombre_completo: nombre,
+          correo: email,
+          is_admin: isAdmin
+        }])
+        .select()
+        .single();
       
-      if (authError) {
-        // Si no hay permisos admin, usar signUp con password temporal
-        const tempPassword = Math.random().toString(36).slice(-8) + 'A1!';
-        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email,
-          password: tempPassword,
-        });
-        
-        if (signUpError) throw signUpError;
-        
-        // Insertar en tabla docentes
-        const { error: dbError } = await supabase
-          .from('docentes')
-          .insert([{
-            user_id: signUpData.user.id,
-            nombre_completo: nombre,
-            correo: email
-          }]);
-        
-        if (dbError) throw dbError;
-      } else {
-        // Insertar en tabla docentes con el user_id de la invitación
-        const { error: dbError } = await supabase
-          .from('docentes')
-          .insert([{
-            user_id: authData.user.id,
-            nombre_completo: nombre,
-            correo: email
-          }]);
-        
-        if (dbError) throw dbError;
-      }
+      if (dbError) throw dbError;
+      
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: error.message };
+    }
+  }, []);
+
+  // Editar docente
+  const editarDocente = useCallback(async (id, campos) => {
+    try {
+      const { error } = await supabase
+        .from('docentes')
+        .update(campos)
+        .eq('id_docente', id);
+      
+      if (error) throw error;
       
       await cargarDocentes();
       return { success: true };
     } catch (error) {
       return { success: false, error: error.message };
     }
-  }, [cargarDocentes]);
-
-  // Editar docente
-  const editarDocente = useCallback(async (id, campos) => {
-    const { error } = await supabase
-      .from('docentes')
-      .update(campos)
-      .eq('id_docente', id);
-    
-    if (!error) {
-      await cargarDocentes();
-      return { success: true };
-    }
-    return { success: false, error: error.message };
   }, [cargarDocentes]);
 
   // Eliminar docente
