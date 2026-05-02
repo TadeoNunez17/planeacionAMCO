@@ -5,6 +5,10 @@ import Login from './components/auth/Login';
 import Header from './components/layout/Header';
 import Footer from './components/layout/Footer';
 import AdminPanel from './components/admin/AdminPanel';
+import StepLogistica from './components/steps/StepLogistica';
+import StepPlaneacion from './components/steps/StepPlaneacion';
+import StepVistaPrevia from './components/steps/StepVistaPrevia';
+import { usePlan } from './hooks/usePlan';
 
 // Componente Planificador (fuera de App)
 function Planificador({ session }) {
@@ -97,41 +101,47 @@ function Planificador({ session }) {
 export default function App() {
   const [session, setSession] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  const [checkingAdmin, setCheckingAdmin] = useState(true);
+  const [loadingSession, setLoadingSession] = useState(true);
 
-  // Monitorear sesión
+  // Monitorear sesión y verificar admin
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => setSession(session));
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => setSession(session));
+    const loadSession = async () => {
+      const { data: { session: initialSession } } = await supabase.auth.getSession();
+      setSession(initialSession);
+      if (initialSession?.user) {
+        const role = initialSession.user.app_metadata?.role;
+        setIsAdmin(role === 'admin');
+      } else {
+        setIsAdmin(false);
+      }
+      setLoadingSession(false);
+    };
+
+    loadSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, newSession) => {
+      setSession(newSession);
+      if (newSession?.user) {
+        const role = newSession.user.app_metadata?.role;
+        setIsAdmin(role === 'admin');
+      } else {
+        setIsAdmin(false);
+      }
+      setLoadingSession(false);
+    });
+
     return () => subscription?.unsubscribe();
   }, []);
 
-  // Verificar si es admin desde app_metadata
-  useEffect(() => {
-    if (!session?.user) {
-      setCheckingAdmin(false);
-      return;
-    }
-
-    // Pequeño async para evitar setState síncrono
-    const checkAdmin = async () => {
-      const role = session.user.app_metadata?.role;
-      setIsAdmin(role === 'admin');
-      setCheckingAdmin(false);
-    };
-
-    checkAdmin();
-  }, [session]);
-
-  if (!session) return <Login />;
-
-  if (checkingAdmin) {
+  if (loadingSession) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-indigo-950 text-white">
-        <Loader2 className="animate-spin mr-2" /> Verificando permisos...
+        <Loader2 className="animate-spin mr-2" /> Cargando sesión...
       </div>
     );
   }
+
+  if (!session) return <Login />;
 
   // Si es admin, ir al panel admin
   if (isAdmin) {

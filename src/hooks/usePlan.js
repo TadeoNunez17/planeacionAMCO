@@ -191,7 +191,7 @@ export function usePlan(session) {
     }
   };
 
-  // Cargar docente y catálogo al montar
+// Cargar docente y catálogo al montar
   useEffect(() => {
     if (session) {
       // Si es admin, no cargar datos de docente
@@ -203,6 +203,7 @@ export function usePlan(session) {
 
       const cargarDatos = async () => {
         try {
+          // 1. Cargar o crear docente
           let { data: dData, error: dError } = await supabase
             .from('docentes').select('*').eq('user_id', session.user.id).maybeSingle();
 
@@ -217,80 +218,87 @@ export function usePlan(session) {
             dData = nuevoDocente;
           }
 
-          if (dData) {
-            setDocente(dData);
-            setPlan(prev => ({
-              ...prev,
-              ciclo_escolar: dData.ciclo_escolar_pref || prev.ciclo_escolar,
-              cicloAmco: dData.ciclo_amco_pref || prev.cicloAmco,
-              link_clase: dData.link_clase_pref || prev.link_clase,
-              recursos_generales: dData.recursos_pref || prev.recursos_generales,
-              libro_id: dData.libro_id_pref || null
-            }));
+          if (!dData) {
+            throw new Error("No se pudo cargar o crear el docente");
+          }
 
-            // ✅ Consulta única relacional: Trae los grupos, y dentro sus cursos, y dentro sus libros.
-const { data: gruposData, error: gruposError } = await supabase
-  .from('grupos')
-  .select(`
-    id_grupo,
-    cursos (
-      libros (
-        id_libro,
-        nombre_libro
-      )
-    )
-  `)
-  .eq('id_docente', dData.id_docente);
+          setDocente(dData);
+          
+          // 2. Establecer plan con preferencias
+          setPlan(prev => ({
+            ...prev,
+            ciclo_escolar: dData.ciclo_escolar_pref || prev.ciclo_escolar,
+            cicloAmco: dData.ciclo_amco_pref || prev.cicloAmco,
+            link_clase: dData.link_clase_pref || prev.link_clase,
+            recursos_generales: dData.recursos_pref || prev.recursos_generales,
+            libro_id: dData.libro_id_pref || null
+          }));
 
-if (gruposError) {
-  console.error("🚨 Error cargando la información relacional:", gruposError);
-} else if (gruposData) {
-  const librosMap = {};
+          // 3. Cargar libros del docente (grupos → cursos → libros)
+          console.log("🔍 Cargando libros para docente:", dData.id_docente);
+          
+          const { data: gruposData, error: gruposError } = await supabase
+            .from('grupos')
+            .select(`
+              cursos!inner (
+                libros!inner (
+                  id_libro,
+                  nombre_libro
+                )
+              )
+            `)
+            .eq('id_docente', dData.id_docente);
 
-  // Extraemos los libros de la respuesta anidada
-  gruposData.forEach(grupo => {
-    if (grupo.cursos) {
-      grupo.cursos.forEach(curso => {
-        // Verificamos que el curso tenga un libro asignado y no sea null
-        if (curso.libros) {
-          librosMap[curso.libros.id_libro] = curso.libros;
-        }
-      });
-    }
-  });
+          if (gruposError) {
+            console.error("🚨 Error cargando grupos:", gruposError);
+            setLibros([]);
+          } else if (gruposData && gruposData.length > 0) {
+            const librosMap = {};
+            
+            gruposData.forEach(grupo => {
+              if (grupo.cursos && Array.isArray(grupo.cursos)) {
+                grupo.cursos.forEach(curso => {
+                  if (curso.libros && curso.libros.id_libro) {
+                    librosMap[curso.libros.id_libro] = {
+                      id_libro: curso.libros.id_libro,
+                      nombre_libro: curso.libros.nombre_libro
+                    };
+                  }
+                });
+              }
+            });
+            
+            const librosFinales = Object.values(librosMap);
+            console.log("✅ Libros cargados:", librosFinales);
+            setLibros(librosFinales);
+          } else {
+            console.warn("⚠️ El docente no tiene grupos/libros asignados.");
+            setLibros([]);
+          }
 
-  const librosFinales = Object.values(librosMap);
-  setLibros(librosFinales);
-  
-  if (librosFinales.length === 0) {
-    console.warn("⚠️ La consulta fue exitosa, pero no se encontraron libros asociados a este docente.");
-  }
-}
-
-            // Si tiene libro preferido, cargar sus ciclos
-            if (dData.libro_id_pref) {
-              const { data: temasDelLibro } = await supabase
-                .from('temas').select('id_tema').eq('id_libro', dData.libro_id_pref);
+          // 4. Cargar ciclos del libro preferido
+          if (dData.libro_id_pref) {
+            const { data: temasDelLibro } = await supabase
+              .from('temas').select('id_tema').eq('id_libro', dData.libro_id_pref);
               
-              if (temasDelLibro && temasDelLibro.length > 0) {
-                const ids = temasDelLibro.map(t => t.id_tema);
-                const { data: temasConCiclos } = await supabase
-                  .from('tema_ciclos')
-                  .select('id_ciclo, ciclos(id_ciclo, nombre_ciclo)')
-                  .in('id_tema', ids);
-                
-                if (temasConCiclos) {
-                  const ciclosUnicos = {};
-                  temasConCiclos.forEach(tc => {
-                    if (tc.ciclos) ciclosUnicos[tc.ciclos.id_ciclo] = tc.ciclos.nombre_ciclo;
-                  });
-                  setCiclosDisponibles(Object.values(ciclosUnicos));
-                }
+            if (temasDelLibro && temasDelLibro.length > 0) {
+              const ids = temasDelLibro.map(t => t.id_tema);
+              const { data: temasConCiclos } = await supabase
+                .from('tema_ciclos')
+                .select('id_ciclo, ciclos(id_ciclo, nombre_ciclo)')
+                .in('id_tema', ids);
+              
+              if (temasConCiclos) {
+                const ciclosUnicos = {};
+                temasConCiclos.forEach(tc => {
+                  if (tc.ciclos) ciclosUnicos[tc.ciclos.id_ciclo] = tc.ciclos.nombre_ciclo;
+                });
+                setCiclosDisponibles(Object.values(ciclosUnicos));
               }
             }
           }
 
-          // Cargar catálogo
+          // 5. Cargar catálogo de temas
           const { data: cData } = await supabase
             .from('contenido_temas')
             .select('*, temas(id_materia, tema, materias(campo_formativo))');
@@ -309,6 +317,7 @@ if (gruposError) {
           setLoading(false);
         }
       };
+
       cargarDatos();
     }
   }, [session]);

@@ -1,16 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Pencil, Trash2, BookOpen } from 'lucide-react';
 import { useAdmin } from '../../hooks/useAdmin';
 
 export default function AdminLibros() {
-  const {
-    libros,
-    loading,
-    cargarLibros,
-    crearLibro,
-    editarLibro,
-    eliminarLibro
-  } = useAdmin();
+  const { libros, loading, cargarLibros, crearLibro, editarLibro, eliminarLibro } = useAdmin();
 
   const [mostrarModal, setMostrarModal] = useState(false);
   const [libroActual, setLibroActual] = useState(null);
@@ -18,12 +11,13 @@ export default function AdminLibros() {
   const [loadingAction, setLoadingAction] = useState(false);
   const [mensaje, setMensaje] = useState(null);
 
+  useEffect(() => { cargarLibros(); }, [cargarLibros]);
+
   const handleCrear = async (e) => {
     e.preventDefault();
     setLoadingAction(true);
     const result = await crearLibro(nombreLibro);
     setLoadingAction(false);
-    
     if (result.success) {
       setMostrarModal(false);
       setNombreLibro('');
@@ -38,7 +32,6 @@ export default function AdminLibros() {
     setLoadingAction(true);
     const result = await editarLibro(libroActual.id_libro, nombreLibro);
     setLoadingAction(false);
-    
     if (result.success) {
       setMostrarModal(false);
       setLibroActual(null);
@@ -50,10 +43,7 @@ export default function AdminLibros() {
   };
 
   const handleEliminar = async (libro) => {
-    if (!confirm(`¿Eliminar "${libro.nombre_libro}"? Esta acción no se puede deshacer.`)) {
-      return;
-    }
-    
+    if (!confirm(`¿Eliminar "${libro.nombre_libro}"? Esta acción no se puede deshacer.`)) return;
     const result = await eliminarLibro(libro.id_libro);
     if (result.success) {
       setMensaje({ tipo: 'success', texto: 'Libro eliminado' });
@@ -78,19 +68,14 @@ export default function AdminLibros() {
     <div>
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-bold text-slate-800">Gestión de Libros</h2>
-        <button
-          onClick={abrirCrear}
-          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2 transition-colors"
-        >
+        <button onClick={abrirCrear} className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2 transition-colors">
           <Plus className="w-4 h-4" />
           Agregar Libro
         </button>
       </div>
 
       {mensaje && (
-        <div className={`p-4 rounded-lg mb-4 ${
-          mensaje.tipo === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200'
-        }`}>
+        <div className={`p-4 rounded-lg mb-4 ${ mensaje.tipo === 'success' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-red-50 text-red-700 border border-red-200' }`}>
           {mensaje.texto}
           <button onClick={() => setMensaje(null)} className="ml-2 font-bold">×</button>
         </div>
@@ -107,13 +92,9 @@ export default function AdminLibros() {
           </thead>
           <tbody>
             {loading ? (
-              <tr>
-                <td colSpan="3" className="px-4 py-8 text-center text-slate-500">Cargando...</td>
-              </tr>
+              <tr><td colSpan="3" className="px-4 py-8 text-center text-slate-500">Cargando...</td></tr>
             ) : libros.length === 0 ? (
-              <tr>
-                <td colSpan="3" className="px-4 py-8 text-center text-slate-500">No hay libros registrados</td>
-              </tr>
+              <tr><td colSpan="3" className="px-4 py-8 text-center text-slate-500">No hay libros registrados</td></tr>
             ) : (
               libros.map(libro => (
                 <tr key={libro.id_libro} className="border-b border-slate-100 hover:bg-slate-50">
@@ -128,18 +109,10 @@ export default function AdminLibros() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => abrirEditar(libro)}
-                        className="p-2 text-slate-600 hover:text-indigo-600 transition-colors"
-                        title="Editar"
-                      >
+                      <button onClick={() => abrirEditar(libro)} className="p-2 text-slate-600 hover:text-indigo-600 transition-colors" title="Editar">
                         <Pencil className="w-4 h-4" />
                       </button>
-                      <button
-                        onClick={() => handleEliminar(libro)}
-                        className="p-2 text-red-500 hover:text-red-700 transition-colors"
-                        title="Eliminar"
-                      >
+                      <button onClick={() => handleEliminar(libro)} className="p-2 text-red-500 hover:text-red-700 transition-colors" title="Eliminar">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -151,7 +124,6 @@ export default function AdminLibros() {
         </table>
       </div>
 
-      {/* Modal Crear/Editar */}
       {mostrarModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl p-6 w-full max-w-md">
@@ -171,18 +143,10 @@ export default function AdminLibros() {
                 />
               </div>
               <div className="flex gap-3">
-                <button
-                  type="button"
-                  onClick={() => setMostrarModal(false)}
-                  className="flex-1 border border-slate-300 text-slate-700 rounded-lg px-4 py-2 hover:bg-slate-50 transition-colors"
-                >
+                <button type="button" onClick={() => setMostrarModal(false)} className="flex-1 border border-slate-300 text-slate-700 rounded-lg px-4 py-2 hover:bg-slate-50 transition-colors">
                   Cancelar
                 </button>
-                <button
-                  type="submit"
-                  disabled={loadingAction}
-                  className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2 transition-colors disabled:opacity-50"
-                >
+                <button type="submit" disabled={loadingAction} className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg px-4 py-2 transition-colors disabled:opacity-50">
                   {loadingAction ? 'Guardando...' : 'Guardar'}
                 </button>
               </div>

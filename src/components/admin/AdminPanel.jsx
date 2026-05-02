@@ -17,7 +17,9 @@ export default function AdminPanel({ onVolver }) {
   const menuItems = [
     { id: 'docentes', label: 'Docentes', icon: Users },
     { id: 'libros', label: 'Libros', icon: BookOpen },
-    { id: 'grupos', label: 'Asignación de Grupos', icon: Link2 }
+    { id: 'crear-grupos', label: 'Crear Grupos', icon: BarChart3 },
+    { id: 'grupos', label: 'Asignación de Libros', icon: Link2 }
+    
   ];
 
   const totalDocentes = docentes.length;

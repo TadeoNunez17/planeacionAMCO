@@ -40,22 +40,51 @@ export function useAdmin() {
     setLoading(false);
   }, []);
 
-  // Cargar libros (simple)
+  // Cargar libros con conteo de docentes
   const cargarLibros = useCallback(async () => {
     setLoading(true);
     
-    const { data, error } = await supabase
+    // 1. Cargar todos los libros
+    const { data: librosData, error: librosError } = await supabase
       .from('libros')
       .select('*')
       .order('nombre_libro');
     
-    if (error) {
-      console.error('Error libros:', error);
+    if (librosError) {
+      console.error('Error libros:', librosError);
       setLibros([]);
-    } else {
-      setLibros(data || []);
+      setLoading(false);
+      return;
     }
+
+    // 2. Para cada libro, contar docentes que tienen acceso
+    const librosConConteo = await Promise.all(
+      (librosData || []).map(async (libro) => {
+        // Buscar cursos con este libro
+        const { data: cursos } = await supabase
+          .from('cursos')
+          .select('id_grupo')
+          .eq('id_libro', libro.id_libro);
+        
+        if (!cursos || cursos.length === 0) {
+          return { ...libro, total_docentes: 0 };
+        }
+        
+        // Obtener IDs de grupos únicos
+        const idsGrupos = [...new Set(cursos.map(c => c.id_grupo))];
+        
+        // Contar docentes con esos grupos
+        const { count } = await supabase
+          .from('grupos')
+          .select('*', { count: 'exact', head: true })
+          .in('id_grupo', idsGrupos);
+        
+        return { ...libro, total_docentes: count || 0 };
+      })
+    );
     
+    console.log('Libros con conteo:', librosConConteo);
+    setLibros(librosConConteo);
     setLoading(false);
   }, []);
 
@@ -134,16 +163,20 @@ export function useAdmin() {
 
   // Editar libro
   const editarLibro = useCallback(async (id, nombre) => {
-    const { error } = await supabase
+    console.log("✏️ Editando libro:", id, "nuevo nombre:", nombre);
+    const { data, error } = await supabase
       .from('libros')
       .update({ nombre_libro: nombre })
-      .eq('id_libro', id);
+      .eq('id_libro', id)
+      .select();
     
-    if (!error) {
-      await cargarLibros();
-      return { success: true };
+    if (error) {
+      console.error("❌ Error editando libro:", error);
+      return { success: false, error: error.message };
     }
-    return { success: false, error: error.message };
+    console.log("✅ Libro editado:", data);
+    await cargarLibros();
+    return { success: true };
   }, [cargarLibros]);
 
   // Eliminar libro
