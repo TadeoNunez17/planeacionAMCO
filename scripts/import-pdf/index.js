@@ -1,6 +1,7 @@
 /* eslint-env node */
 import path from 'path';
 import fs from 'fs';
+import readline from 'readline';
 import { extraerTextoPDF } from './src/pdfjsExtractor.js';
 import { parsearTexto } from './src/amcoTransformer.js';
 import { validarBloques, imprimirReporte } from './src/blockValidator.js';
@@ -21,6 +22,20 @@ if (!fs.existsSync(rutaPDF)) {
 
 const nombreBase = path.basename(rutaPDF, '.pdf');
 
+// Función para hacer preguntas en consola
+function preguntar(pregunta) {
+  return new Promise((resolve) => {
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout
+    });
+    rl.question(pregunta, (respuesta) => {
+      rl.close();
+      resolve(respuesta.trim());
+    });
+  });
+}
+
 console.log('🚀 Amco PDF Importer — v1.0');
 console.log('─'.repeat(50));
 
@@ -32,11 +47,29 @@ async function main() {
     console.log(`\n✅ Extracción: ${totalPaginas} páginas, ${todosLosItems.length} fragmentos detectados.`);
 
     // Fase 3: Parser
-    const { libro, bloques } = parsearTexto(textoCompleto);
+    const { libro: libroDetectado, bloques: bloquesDetectados } = parsearTexto(textoCompleto);
+    
+    // Preguntar nombre del libro para mayor precisión
+    console.log('\n❓ Verificación de nombre de libro:');
+    console.log(`   Detectado automáticamente: "${libroDetectado}"`);
+    const respuesta = await preguntar('¿Es correcto? (s/n): ');
+    
+    let libroFinal = libroDetectado;
+    if (respuesta.toLowerCase() !== 's' && respuesta.toLowerCase() !== 'si' && respuesta.toLowerCase() !== 'y' && respuesta.toLowerCase() !== 'yes') {
+      const nuevoNombre = await preguntar('Ingresa el nombre correcto del libro: ');
+      if (nuevoNombre) {
+        libroFinal = nuevoNombre;
+      }
+    }
+    
+    console.log(`\n📚 Libro final: "${libroFinal}"`);
+    
+    // Recrear el objeto con el nombre correcto
+    const bloques = bloquesDetectados.map(b => ({ ...b, libro: libroFinal }));
 
     // ─── LÓGICA DE CARPETAS DINÁMICAS ───────────────────────────────────
     // Limpiamos el nombre del libro por si tiene caracteres especiales
-    const nombreCarpetaLibro = libro.replace(/[<>:"\/\\|?*]+/g, '-');
+    const nombreCarpetaLibro = libroFinal.replace(/[<>:"\/\\|?*]+/g, '-');
     
     // Obtenemos la fecha actual (Ej: 2026-03-27)
     const fechaHoy = new Date().toISOString().split('T')[0];
@@ -63,7 +96,7 @@ async function main() {
     // ────────────────────────────────────────────────────────────────────
 
     console.log('\n' + '─'.repeat(50));
-    console.log(`📚 Libro   : ${libro}`);
+    console.log(`📚 Libro   : ${libroFinal}`);
     console.log(`📦 Bloques : ${bloques.length}`);
     console.log(`📁 Carpeta : ${directorioSalida}`);
     console.log(`💾 JSON guardado exitosamente.`);
